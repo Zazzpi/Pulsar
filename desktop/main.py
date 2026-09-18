@@ -1,13 +1,14 @@
 """Run from the repository root with: python -m desktop.main."""
 
 import logging
+from logging.handlers import RotatingFileHandler
 import sys
 
 from PyQt6.QtCore import QObject
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from desktop.cache.sqlite_cache import SQLiteCache
-from desktop.config import Settings
+from desktop.config import Settings, application_data_dir
 from desktop.ui.clients_window import ClientsWindow
 from desktop.ui.login_window import LoginWindow
 from desktop.workers.request_worker import WorkerPool
@@ -25,6 +26,22 @@ QLabel#metricValue { font-size: 24px; font-weight: bold; }
 QLabel#warningBanner { background: #fff1c7; color: #543c00; padding: 10px; }
 QLabel#resourceStatus { color: #475569; }
 """
+
+
+def configure_logging():
+    """Windowed EXEs have no console; keep a bounded log in the user profile."""
+    handlers = []
+    if sys.stderr is not None:
+        handlers.append(logging.StreamHandler())
+    try:
+        log_dir = application_data_dir() / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        handlers.append(RotatingFileHandler(log_dir / "pulsar.log", maxBytes=1_000_000,
+                                           backupCount=2, encoding="utf-8"))
+    except OSError:
+        pass  # A logging failure must not prevent the GUI from opening.
+    logging.basicConfig(level=logging.INFO, handlers=handlers or [logging.NullHandler()],
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 def report_unhandled_error(error_type, _error, _traceback):
@@ -62,7 +79,7 @@ class ApplicationController(QObject):
 
 
 def main() -> int:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    configure_logging()
     app = QApplication(sys.argv)
     app.setApplicationName("Pulsar")
     app.setStyleSheet(STYLE)

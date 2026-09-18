@@ -1,0 +1,65 @@
+name: Windows executable
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'packaging/**'
+      - '.github/workflows/windows.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+          cache: pip
+          cache-dependency-path: |
+            packaging/requirements.txt
+            desktop/requirements.txt
+      - name: Install desktop and build dependencies
+        run: python -m pip install -r packaging/requirements.txt pytest
+      - name: Test desktop on Windows
+        run: python -m pytest -c packaging/pytest.ini desktop/tests
+      - name: Build a single windowed executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile --windowed
+          --name Pulsar --paths . --noupx
+          --copy-metadata PyQt6 --copy-metadata PyQt6-Qt6
+          --copy-metadata requests --copy-metadata certifi
+          packaging/windows_entry.py
+      - name: Run the bundled executable
+        shell: pwsh
+        run: |
+          $report = Join-Path $env:RUNNER_TEMP 'pulsar-bundle-report.json'
+          $exe = (Resolve-Path '.\dist\Pulsar.exe').Path
+          $process = Start-Process -FilePath $exe -WorkingDirectory $env:RUNNER_TEMP -ArgumentList @('--smoke-test', $report) -PassThru
+          $null = $process.Handle
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Pulsar startup timed out' }
+          if ($process.ExitCode -ne 0) { throw "Pulsar exited with code $($process.ExitCode)" }
+          $result = Get-Content $report -Raw | ConvertFrom-Json
+          if (-not $result.ok -or -not $result.frozen) { throw 'Bundled application failed verification' }
+          Get-Content $report
+          Copy-Item $report dist/bundle-check.json
+      - name: Prepare download
+        shell: pwsh
+        run: |
+          Copy-Item packaging/START_HERE_RU.txt dist/
+          $hash = (Get-FileHash dist/Pulsar.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Pulsar.exe" | Out-File dist/SHA256SUMS.txt -Encoding ascii
+          "Commit: $env:GITHUB_SHA" | Out-File dist/build-info.txt -Encoding utf8
+          python -m pip freeze | Out-File dist/build-info.txt -Append -Encoding utf8
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pulsar-windows-x64
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30

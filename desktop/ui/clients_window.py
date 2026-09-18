@@ -29,7 +29,8 @@ class ClientsWindow(QMainWindow):
         self.setCentralWidget(central)
         layout = QVBoxLayout(central)
         header = QHBoxLayout()
-        header.addWidget(plain_label(f"{user['username']} · {api.origin}"))
+        demo = getattr(api, "demo", False)
+        header.addWidget(plain_label("Демонстрация · данные на этом компьютере" if demo else f"{user['username']} · {api.origin}"))
         header.addStretch()
         self.logout_button = QPushButton("Войти" if offline else "Выйти")
         self.logout_button.clicked.connect(self.logout)
@@ -37,8 +38,9 @@ class ClientsWindow(QMainWindow):
         layout.addLayout(header)
         self.banner = plain_label()
         self.banner.setObjectName("warningBanner")
-        self.banner.setVisible(offline)
-        self.banner.setText("Сохранённые данные могут быть устаревшими. Войдите для обновления и изменений.")
+        self.banner.setVisible(offline or demo)
+        self.banner.setText("Демо: тестовые данные. Наблюдения и заметки сохраняются только на этом компьютере."
+                            if demo else "Сохранённые данные могут быть устаревшими. Войдите для обновления и изменений.")
         layout.addWidget(self.banner)
         splitter = QSplitter(Qt.Orientation.Horizontal)
         sidebar = QWidget()
@@ -90,7 +92,10 @@ class ClientsWindow(QMainWindow):
         splitter.setCollapsible(1, False)
         layout.addWidget(splitter)
         self.update_pages()
-        self.load_list()
+        if demo:
+            self.mode.setCurrentIndex(1)
+        else:
+            self.load_list()
 
     def update_pages(self):
         self.previous.setEnabled(self.page > 1)

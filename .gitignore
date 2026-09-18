@@ -17,5 +17,8 @@ cache.db*
 .agents/
 .codex/
 artifacts/
+build/
+dist/
+*.spec
 core
 core.*

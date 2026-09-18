@@ -1,9 +1,19 @@
 """Desktop configuration contains API settings only, never WMS credentials."""
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
+
+
+def application_data_dir() -> Path:
+    """Keep writable data outside the executable, including a one-file bundle."""
+    if sys.platform == "win32":
+        return Path(os.getenv("LOCALAPPDATA", str(Path.home() / "AppData/Local"))) / "Pulsar"
+    if sys.platform == "darwin":
+        return Path.home() / "Library/Application Support/Pulsar"
+    return Path(os.getenv("XDG_DATA_HOME", str(Path.home() / ".local/share"))) / "pulsar"
 
 
 def normalize_origin(value: str) -> str:
@@ -37,7 +47,10 @@ class Settings:
 
     @classmethod
     def from_environment(cls) -> "Settings":
-        data_root = Path(os.getenv("XDG_DATA_HOME", str(Path.home() / ".local/share")))
+        data_root = application_data_dir()
+        # An end-user build must not pretend the shared server is on this PC.
+        default_url = "" if getattr(sys, "frozen", False) else "http://127.0.0.1:8000"
+        api_url = os.getenv("WMS_API_URL", default_url).strip()
         timeout = float(os.getenv("WMS_HTTP_TIMEOUT_SECONDS", "15"))
         if not 1 <= timeout <= 120:
             raise ValueError("WMS_HTTP_TIMEOUT_SECONDS должен быть от 1 до 120.")
@@ -45,8 +58,8 @@ class Settings:
         if refresh < 15:
             raise ValueError("WMS_REFRESH_SECONDS должен быть не меньше 15.")
         return cls(
-            api_url=normalize_origin(os.getenv("WMS_API_URL", "http://127.0.0.1:8000")),
-            cache_path=Path(os.getenv("WMS_CACHE_PATH", str(data_root / "pulsar/cache.db"))).expanduser(),
+            api_url=normalize_origin(api_url) if api_url else "",
+            cache_path=Path(os.getenv("WMS_CACHE_PATH", str(data_root / "cache.db"))).expanduser(),
             http_timeout=timeout,
             refresh_seconds=refresh,
         )

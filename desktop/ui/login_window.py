@@ -5,6 +5,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QFormLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from desktop.api.client import ApiClient
+from desktop.demo import DemoApiClient
 from desktop.ui.resource_panels import plain_label
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ class LoginWindow(QWidget):
         layout.addWidget(title)
         form = QFormLayout()
         self.api_url = QLineEdit(settings.api_url)
+        self.api_url.setPlaceholderText("https:// — адрес от администратора")
         self.username = QLineEdit()
         self.password = QLineEdit()
         self.password.setEchoMode(QLineEdit.EchoMode.Password)
@@ -33,11 +35,14 @@ class LoginWindow(QWidget):
         form.addRow("Логин", self.username)
         form.addRow("Пароль", self.password)
         layout.addLayout(form)
-        self.status = plain_label("Для удалённого сервера используйте HTTPS.")
+        self.status = plain_label("При первом входе укажите адрес сервера, логин и пароль, полученные от администратора.")
         layout.addWidget(self.status)
         self.login_button = QPushButton("Войти")
         self.login_button.clicked.connect(self.login)
         layout.addWidget(self.login_button)
+        self.demo_button = QPushButton("Посмотреть демо без сервера")
+        self.demo_button.clicked.connect(self.open_demo)
+        layout.addWidget(self.demo_button)
         self.offline_button = QPushButton("Открыть сохранённые данные")
         self.offline_button.clicked.connect(self.open_offline)
         layout.addWidget(self.offline_button)
@@ -55,7 +60,7 @@ class LoginWindow(QWidget):
             ))
 
     def set_busy(self, busy):
-        for widget in (self.login_button, self.username, self.password, self.api_url):
+        for widget in (self.login_button, self.demo_button, self.username, self.password, self.api_url):
             widget.setEnabled(not busy)
         self.offline_button.setEnabled(not busy and self.profile is not None)
 
@@ -99,6 +104,14 @@ class LoginWindow(QWidget):
         if self.profile:
             api = ApiClient(self.profile["origin"], timeout=self.settings.http_timeout)
             self.authenticated.emit(api, self.profile["user"], True)
+
+    def open_demo(self):
+        try:
+            api = DemoApiClient(self.settings.cache_path.with_name("demo.sqlite3"))
+            self.authenticated.emit(api, api.user, False)
+        except (sqlite3.Error, OSError):
+            logger.warning("Could not open local demo storage")
+            self.status.setText("Не удалось открыть демонстрационные данные на этом компьютере.")
 
     def closeEvent(self, event):
         self.disposed = True
