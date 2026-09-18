@@ -70,7 +70,7 @@ class SQLiteCache:
             return None
         try:
             return CachedResponse(json.loads(row[0]), row[1])
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, RecursionError):
             logger.warning("Discarded corrupt SQLite JSON")
             return None
 
@@ -88,7 +88,15 @@ class SQLiteCache:
         """Remove all cached pages for a changed resource, within this user only."""
         with self.connection() as connection:
             rows = connection.execute("SELECT cache_key FROM responses WHERE namespace = ?", (namespace,)).fetchall()
-            keys = [(namespace, row[0]) for row in rows if json.loads(row[0])[0] == path]
+            keys = []
+            for row in rows:
+                try:
+                    key = json.loads(row[0])
+                    matches = isinstance(key, list) and len(key) == 2 and key[0] == path
+                except (ValueError, TypeError, RecursionError):
+                    matches = True  # A corrupt cache entry is safe to discard.
+                if matches:
+                    keys.append((namespace, row[0]))
             connection.executemany("DELETE FROM responses WHERE namespace = ? AND cache_key = ?", keys)
 
     def remember_profile(self, origin: str, user: dict) -> None:

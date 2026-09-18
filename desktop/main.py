@@ -5,6 +5,7 @@ from logging.handlers import RotatingFileHandler
 import sys
 
 from PyQt6.QtCore import QObject
+from PyQt6.QtGui import QColor, QPalette
 from PyQt6.QtWidgets import QApplication, QMessageBox
 
 from desktop.cache.sqlite_cache import SQLiteCache
@@ -26,6 +27,25 @@ QLabel#metricValue { font-size: 24px; font-weight: bold; }
 QLabel#warningBanner { background: #fff1c7; color: #543c00; padding: 10px; }
 QLabel#resourceStatus { color: #475569; }
 """
+
+
+def configure_appearance(app):
+    # Fixed light surfaces need a matching palette even on a dark KDE desktop.
+    app.setStyle("Fusion")
+    palette = QPalette()
+    for role, color in {
+        QPalette.ColorRole.Window: "#f4f6fa", QPalette.ColorRole.WindowText: "#172033",
+        QPalette.ColorRole.Base: "#ffffff", QPalette.ColorRole.AlternateBase: "#edf2f8",
+        QPalette.ColorRole.Text: "#172033", QPalette.ColorRole.Button: "#e9eff7",
+        QPalette.ColorRole.ButtonText: "#172033", QPalette.ColorRole.Highlight: "#2563eb",
+        QPalette.ColorRole.HighlightedText: "#ffffff", QPalette.ColorRole.ToolTipBase: "#ffffff",
+        QPalette.ColorRole.ToolTipText: "#172033", QPalette.ColorRole.PlaceholderText: "#64748b",
+    }.items():
+        palette.setColor(role, QColor(color))
+    for role in (QPalette.ColorRole.Text, QPalette.ColorRole.ButtonText, QPalette.ColorRole.WindowText):
+        palette.setColor(QPalette.ColorGroup.Disabled, role, QColor("#7a8494"))
+    app.setPalette(palette)
+    app.setStyleSheet(STYLE)
 
 
 def configure_logging():
@@ -82,7 +102,7 @@ def main() -> int:
     configure_logging()
     app = QApplication(sys.argv)
     app.setApplicationName("Pulsar")
-    app.setStyleSheet(STYLE)
+    configure_appearance(app)
     sys.excepthook = report_unhandled_error
     try:
         settings = Settings.from_environment()

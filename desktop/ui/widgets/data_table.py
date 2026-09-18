@@ -9,7 +9,7 @@ from desktop.models.dto import display_time
 LABELS = {
     "id": "ID", "product_id": "Товар ID", "sku": "Артикул", "name": "Название",
     "product_name": "Товар", "quantity": "Количество", "reserved_quantity": "Резерв",
-    "available": "Доступно", "warehouse_id": "Склад ID", "cell_id": "Ячейка ID",
+    "available": "Доступно", "available_quantity": "Доступно", "warehouse_id": "Склад ID", "cell_id": "Ячейка ID",
     "batch_id": "Партия ID", "box_id": "Короб ID", "status": "Статус",
     "order_type": "Тип заказа", "kind": "Вид приёмки", "movement_type": "Тип движения",
     "created_at": "Создано", "updated_at": "Обновлено", "received_at": "Принято",

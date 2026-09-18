@@ -60,7 +60,7 @@ Python, Qt и зависимости включены в файл, консол�
 
 ```powershell
 python -m pip install -r packaging/requirements.txt
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name Pulsar --paths . --noupx --copy-metadata PyQt6 --copy-metadata PyQt6-Qt6 --copy-metadata requests --copy-metadata certifi packaging/windows_entry.py
+python -m PyInstaller --noconfirm --clean --onefile --windowed --name Pulsar --paths . --noupx --copy-metadata PyQt6 --copy-metadata PyQt6-Qt6 --copy-metadata requests --copy-metadata certifi packaging/desktop_entry.py
 ```
 
 Результат — `dist/Pulsar.exe`. Секреты `.env`, backend, PostgreSQL и локальные

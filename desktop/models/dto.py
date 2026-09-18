@@ -13,8 +13,8 @@ def display_time(value: str | None) -> str:
     if not value:
         return "—"
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone().strftime("%d.%m.%Y %H:%M")
-    except (ValueError, TypeError):
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).astimezone().strftime("%d.%m.%Y %H:%M")
+    except (ValueError, TypeError, OverflowError, OSError):
         return str(value)
 
 
@@ -28,5 +28,5 @@ def watch_caption(watch: dict | None) -> str:
         elapsed = max(0, min(90, (now - start).days))
         state = "Наблюдение" if watch.get("is_active") and now < end else "Наблюдение завершено"
         return f"{state}: {elapsed} / 90 дней; до {display_time(watch['ends_at'])}"
-    except (KeyError, ValueError, TypeError):
+    except (KeyError, ValueError, TypeError, AttributeError, OverflowError):
         return "Наблюдение: дата недоступна"

@@ -7,6 +7,8 @@ from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 APP_ENV = os.getenv("APP_ENV", "development")
+if APP_ENV not in {"development", "production"}:
+    raise ImproperlyConfigured("APP_ENV must be development or production")
 PRODUCTION = APP_ENV == "production"
 DEBUG = os.getenv("DJANGO_DEBUG", "0").lower() in {"1", "true"} and not PRODUCTION
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "")
@@ -41,7 +43,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 APPEND_SLASH = False
 DATA_UPLOAD_MAX_MEMORY_SIZE = 32 * 1024
 
-if os.getenv("APP_DB_ENGINE", "sqlite") == "postgresql":
+APP_DB_ENGINE = os.getenv("APP_DB_ENGINE", "sqlite")
+if APP_DB_ENGINE not in {"sqlite", "postgresql"}:
+    raise ImproperlyConfigured("APP_DB_ENGINE must be sqlite or postgresql")
+if APP_DB_ENGINE == "postgresql":
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.getenv("APP_DB_NAME", "pulsar"),

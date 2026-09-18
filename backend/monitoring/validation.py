@@ -36,14 +36,15 @@ def date_range(request):
             end = date.fromisoformat(request.GET["to"])
             if request.GET["to"] != end.isoformat():
                 raise ValueError
-            start = end - timedelta(days=90)
+            if "from" not in request.GET:
+                start = end - timedelta(days=90)
         if "from" in request.GET:
             start = date.fromisoformat(request.GET["from"])
             if request.GET["from"] != start.isoformat():
                 raise ValueError
         if not 1 <= (end - start).days <= 90:
             raise ValueError
-    except ValueError:
+    except (ValueError, OverflowError):
         raise InvalidInput("Период from/to: даты YYYY-MM-DD, from < to, не более 90 дней; to не включается.") from None
     return start, end
 
@@ -54,5 +55,5 @@ def json_body(request):
         if not isinstance(body, dict):
             raise ValueError
         return body
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         raise InvalidInput("Ожидается JSON-объект.") from None

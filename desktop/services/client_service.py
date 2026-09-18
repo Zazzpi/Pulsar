@@ -3,6 +3,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from desktop.api.client import ApiClient, ApiError
+from desktop.api.contracts import validate_read_payload
 from desktop.cache.sqlite_cache import SQLiteCache, user_namespace
 from desktop.models.dto import CachedResponse
 
@@ -16,8 +17,11 @@ class ClientService:
 
     def cached(self, path: str, params: dict | None = None) -> CachedResponse | None:
         try:
-            return self.cache.get(self.namespace, path, params)
-        except (sqlite3.Error, OSError):
+            response = self.cache.get(self.namespace, path, params)
+            if response is not None:
+                validate_read_payload(path, response.payload)
+            return response
+        except (sqlite3.Error, OSError, ApiError):
             logger.warning("Could not read local cache")
             return None
 
@@ -25,6 +29,7 @@ class ClientService:
         if self.offline:
             raise ApiError("Открыты сохранённые данные. Войдите для обновления.")
         payload = self.api.request("GET", path, params=params)
+        validate_read_payload(path, payload)
         updated_at = datetime.now(timezone.utc).isoformat()
         try:
             updated_at = self.cache.put(self.namespace, path, payload, params)

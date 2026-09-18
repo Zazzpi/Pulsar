@@ -1,4 +1,5 @@
 from unittest.mock import Mock
+import json
 
 import pytest
 import requests
@@ -12,6 +13,7 @@ def response(status=200, payload=None):
     result.__enter__ = Mock(return_value=result)
     result.__exit__ = Mock(return_value=False)
     result.json.return_value = payload or {"results": []}
+    result.iter_content.return_value = [json.dumps(payload or {"results": []}).encode()]
     return result
 
 
@@ -40,7 +42,7 @@ def test_http_errors_are_actionable_and_dont_expose_response(monkeypatch, status
 
 def test_malformed_json(monkeypatch):
     result = response()
-    result.json.side_effect = ValueError("not json")
+    result.iter_content.return_value = [b"not json"]
     monkeypatch.setattr(requests, "request", Mock(return_value=result))
     with pytest.raises(ApiError, match="JSON"):
         ApiClient("https://warehouse.test").request("GET", "/api/clients/")
@@ -69,3 +71,34 @@ def test_unsafe_or_ambiguous_origins_rejected(url):
 def test_equivalent_origins_share_namespace():
     assert normalize_origin("https://WAREHOUSE.test:443/") == "https://warehouse.test"
     assert normalize_origin("http://127.0.0.1:8000/") == "http://127.0.0.1:8000"
+
+
+def test_response_size_is_bounded(monkeypatch):
+    monkeypatch.setattr('desktop.api.client.MAX_RESPONSE_BYTES', 16)
+    result = response()
+    result.iter_content.return_value = [b'x' * 10, b'y' * 10]
+    monkeypatch.setattr(requests, 'request', Mock(return_value=result))
+    with pytest.raises(ApiError, match='слишком большой'):
+        ApiClient('https://warehouse.test').request('GET', '/api/clients/')
+    result.__exit__.assert_called_once()
+
+
+def test_interrupted_response_is_handled(monkeypatch):
+    result = response()
+    result.iter_content.side_effect = requests.ConnectionError('secret')
+    monkeypatch.setattr(requests, 'request', Mock(return_value=result))
+    with pytest.raises(ApiError, match='соединение'):
+        ApiClient('https://warehouse.test').request('GET', '/api/clients/')
+
+
+@pytest.mark.parametrize('token', [123, 'bad\r\nheader', 'токен'])
+def test_invalid_login_token_is_rejected(monkeypatch, token):
+    result = response(payload={'token': token, 'user': {'id': 1, 'username': 'alice'}})
+    monkeypatch.setattr(requests, 'request', Mock(return_value=result))
+    with pytest.raises(ApiError):
+        ApiClient('https://warehouse.test').login('alice', 'password')
+
+
+def test_zero_port_rejected():
+    with pytest.raises(ValueError):
+        normalize_origin('https://warehouse.test:0')

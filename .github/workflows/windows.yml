@@ -35,7 +35,7 @@ jobs:
           --name Pulsar --paths . --noupx
           --copy-metadata PyQt6 --copy-metadata PyQt6-Qt6
           --copy-metadata requests --copy-metadata certifi
-          packaging/windows_entry.py
+          packaging/desktop_entry.py
       - name: Run the bundled executable
         shell: pwsh
         run: |

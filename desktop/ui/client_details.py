@@ -67,6 +67,18 @@ class ClientDetails(QWidget):
         if not online:
             self.timer.stop()
 
+    def clear_client(self):
+        self.revision += 1
+        self.client = self.watch = None
+        self.watch_busy = self.mutation_busy = False
+        self.title.setText("Выберите клиента в списке")
+        self.subtitle.clear()
+        self.watch_label.clear()
+        for panel in self.panels:
+            panel.set_client(None)
+            panel.status.setText("Выберите клиента")
+        self.update_access()
+
     def set_client(self, client: dict, watch: dict | None = None):
         if self.client and self.client["id"] == client["id"]:
             return

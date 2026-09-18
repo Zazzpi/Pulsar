@@ -28,6 +28,8 @@ def normalize_origin(value: str) -> str:
         raise ValueError("Для удалённого сервера требуется HTTPS.")
     try:
         port = parts.port
+        if port == 0:
+            raise ValueError
     except ValueError as exc:
         raise ValueError("Некорректный порт API.") from exc
     hostname = parts.hostname.lower()

@@ -21,7 +21,7 @@ def login(request):
         if (not isinstance(username, str) or not isinstance(password, str)
                 or not 1 <= len(username) <= 150 or not 1 <= len(password) <= 4096):
             raise ValueError
-    except (ValueError, KeyError, TypeError):
+    except (ValueError, KeyError, TypeError, RecursionError):
         return JsonResponse({"error": "Укажите username и password."}, status=400)
 
     identity = request.META.get("REMOTE_ADDR", "unknown")

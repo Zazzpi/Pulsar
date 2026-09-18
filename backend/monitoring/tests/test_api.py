@@ -250,3 +250,25 @@ def test_demo_command_requires_mock_and_env(settings, monkeypatch):
     monkeypatch.delenv("DEMO_USERNAME", raising=False)
     with pytest.raises(CommandError, match="DEMO_USERNAME"):
         call_command("create_demo_user")
+
+
+@pytest.mark.parametrize('params', [
+    {'to': '0001-01-01'}, {'to': '0001-02-01'},
+    {'from': '9999-12-31', 'to': '0001-01-01'},
+])
+def test_extreme_dates_return_validation_error(api, params):
+    assert api.get('/api/clients/1/orders/', params).status_code == 400
+
+
+def test_explicit_early_date_range_is_valid(api):
+    assert api.get('/api/clients/1/orders/', {'from': '0001-01-01', 'to': '0001-02-01'}).status_code == 200
+
+
+@pytest.mark.parametrize('path', ['/api/auth/login/', '/api/clients/1/notes/'])
+def test_nested_or_oversized_json_does_not_crash(api, path):
+    nested = '[' * 2000 + '0' + ']' * 2000
+    assert api.post(path, nested, content_type='application/json').status_code == 400
+    oversized = '{"body":"' + 'x' * 40000 + '"}'
+    response = api.post(path, oversized, content_type='application/json')
+    assert response.status_code == 413
+    assert response['Cache-Control'] == 'no-store'

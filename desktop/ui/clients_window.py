@@ -129,6 +129,7 @@ class ClientsWindow(QMainWindow):
         self.revision += 1
         self.busy, self.loaded, self.has_next = False, False, False
         self.clients.clear()
+        self.details.clear_client()
         self.update_pages()
 
     def load_list(self):
@@ -168,6 +169,8 @@ class ClientsWindow(QMainWindow):
                     selected_item = item
             if selected_item:
                 self.clients.setCurrentItem(selected_item)
+            else:
+                self.details.clear_client()
             self.clients.blockSignals(False)
             self.has_next = bool(response.payload.get("has_next"))
             self.update_pages()

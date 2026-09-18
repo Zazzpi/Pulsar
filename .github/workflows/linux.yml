@@ -1,0 +1,60 @@
+name: Linux executable
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'packaging/**'
+      - '.github/workflows/linux.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            packaging/requirements.txt
+            desktop/requirements.txt
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0
+          python -m pip install -r packaging/requirements.txt pytest
+      - name: Test desktop
+        run: python -m pytest -c packaging/pytest.ini desktop/tests
+      - name: Build a single executable
+        run: >-
+          python -m PyInstaller --noconfirm --clean --onefile --windowed
+          --name Pulsar-linux-x86_64 --paths . --noupx
+          --copy-metadata PyQt6 --copy-metadata PyQt6-Qt6
+          --copy-metadata requests --copy-metadata certifi
+          packaging/desktop_entry.py
+      - name: Verify and prepare download
+        run: |
+          exe="$GITHUB_WORKSPACE/dist/Pulsar-linux-x86_64"
+          cd "$RUNNER_TEMP"
+          timeout 60 "$exe" --smoke-test "$GITHUB_WORKSPACE/dist/linux-bundle-check.json"
+          cd "$GITHUB_WORKSPACE/dist"
+          cp ../packaging/START_LINUX_RU.txt .
+          tar -czf Pulsar-linux-x86_64.tar.gz Pulsar-linux-x86_64 START_LINUX_RU.txt
+          sha256sum Pulsar-linux-x86_64.tar.gz > SHA256SUMS-linux.txt
+          echo "Commit: $GITHUB_SHA" > linux-build-info.txt
+          python -m pip freeze >> linux-build-info.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pulsar-linux-x64
+          path: |
+            dist/*.tar.gz
+            dist/*.txt
+            dist/*.json
+          if-no-files-found: error
+          retention-days: 30

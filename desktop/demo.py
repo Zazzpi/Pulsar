@@ -15,6 +15,7 @@ class DemoApiClient:
     user = {"id": "local-demo", "username": "Демонстрация"}
 
     def __init__(self, state_path: Path):
+        self.snapshot_time = datetime.now(timezone.utc)
         self.state_path = Path(state_path)
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         self.clients = [
@@ -48,7 +49,7 @@ class DemoApiClient:
         return next((c for c in self.clients if c["id"] == int(client_id)), None)
 
     def _rows(self, client_id, resource):
-        now = datetime.now(timezone.utc)
+        now = self.snapshot_time
         stamp = lambda hours: (now - timedelta(hours=hours)).isoformat()
         if resource == "stock":
             return [{"product_id": client_id * 10 + i, "sku": f"DEMO-{client_id}-{i}",
@@ -58,9 +59,9 @@ class DemoApiClient:
                     for i, name in enumerate(("Кабель USB-C", "Зарядное устройство"), 1)]
         if resource == "orders":
             return [{"id": client_id * 100 + i, "order_type": "outbound", "status": status,
-                     "created_at": stamp(24 + i), "shipment_deadline": stamp(-6),
+                     "created_at": stamp(48 + i), "shipment_deadline": stamp(-6 if i == 1 else -48),
                      "client_id": client_id, "warehouse_id": 1}
-                    for i, status in enumerate(("confirmed", "picking"), 1)]
+                    for i, status in enumerate(("confirmed", "picking", "shipped"), 1)]
         if resource == "receivings":
             return [{"status": "in_receiving", "kind": "supply", "created_at": stamp(12),
                      "confirmed_at": stamp(10), "received_at": None, "client_id": client_id}]

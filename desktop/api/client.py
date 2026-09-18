@@ -1,6 +1,7 @@
 """Small requests adapter. Call its methods only from a request worker."""
 
 import logging
+import json
 from typing import Any
 
 import requests
@@ -8,6 +9,7 @@ import requests
 from desktop.config import normalize_origin
 
 logger = logging.getLogger(__name__)
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 
 
 class ApiError(Exception):
@@ -31,7 +33,7 @@ class ApiClient:
         try:
             response = requests.request(
                 method, self.origin + path, params=params, json=data,
-                headers=headers, timeout=self.timeout, allow_redirects=False,
+                headers=headers, timeout=self.timeout, allow_redirects=False, stream=True,
             )
         except requests.Timeout as exc:
             logger.warning("HTTP timeout: %s %s", method, path)
@@ -54,8 +56,15 @@ class ApiClient:
             if response.status_code == 204:
                 return None
             try:
-                payload = response.json()
-            except ValueError as exc:
+                raw = bytearray()
+                for chunk in response.iter_content(chunk_size=65536):
+                    raw.extend(chunk)
+                    if len(raw) > MAX_RESPONSE_BYTES:
+                        raise ApiError("Ответ сервера слишком большой. Уменьшите размер страницы.")
+                payload = json.loads(raw)
+            except requests.RequestException as exc:
+                raise ApiError("Не удалось загрузить ответ сервера. Проверьте соединение.") from exc
+            except (ValueError, RecursionError) as exc:
                 raise ApiError("Сервер вернул некорректный JSON.") from exc
             if not isinstance(payload, (dict, list)):
                 raise ApiError("Сервер вернул неожиданный формат данных.")
@@ -63,10 +72,14 @@ class ApiClient:
 
     def login(self, username: str, password: str) -> dict:
         payload = self.request("POST", "/api/auth/login/", data={"username": username, "password": password})
-        if not isinstance(payload, dict) or not payload.get("token") or not isinstance(payload.get("user"), dict):
+        if (not isinstance(payload, dict) or not isinstance(payload.get("token"), str)
+                or not payload["token"] or not payload["token"].isascii()
+                or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in payload["token"])
+                or not isinstance(payload.get("user"), dict)):
             raise ApiError("Ответ авторизации не содержит токен и пользователя.")
         user = payload["user"]
-        if user.get("id") is None or not user.get("username"):
+        if (not isinstance(user.get("id"), int) or isinstance(user["id"], bool) or user["id"] < 1
+                or not isinstance(user.get("username"), str) or not user["username"]):
             raise ApiError("Ответ авторизации не содержит идентификатор пользователя.")
         self.token = payload["token"]
         return {"id": user["id"], "username": user["username"]}

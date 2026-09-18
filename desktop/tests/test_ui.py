@@ -145,3 +145,42 @@ def test_login_window_and_reopening_offline_profile(context, tmp_path):
     assert offline_user["username"] == user["username"]
     assert workers.jobs == []
     window.close()
+
+
+def test_search_clears_old_card_and_ignores_its_pending_requests(context, tmp_path):
+    cache, api, user, workers, _service, _sync = context
+    window = ClientsWindow(Settings(api.origin, tmp_path / 'cache.db'), api, user, cache, workers)
+    window.mode.setCurrentIndex(1)
+    workers.jobs[-1][1](fresh({'results': [{'id': 1, 'name': 'Первый'}]}))
+    pending_summary = workers.jobs[-2]
+    assert window.details.client['id'] == 1
+    window.search.setText('Второй')
+    window.search_clients()
+    assert window.details.client is None
+    assert not window.details.watch_button.isEnabled()
+    pending_summary[1](fresh({'stock': {'total': 999}}))
+    assert window.details.panels[0].metrics['stock.total'].text() == '—'
+    workers.jobs[-1][1](fresh({'results': [{'id': 2, 'name': 'Второй'}]}))
+    assert window.details.client['id'] == 2
+    window.load_list()
+    workers.jobs[-1][1](fresh({'results': []}))
+    assert window.details.client is None
+    assert not window.details.tabs.isEnabled()
+    window.close()
+
+
+@pytest.mark.parametrize('path,payload', [
+    ('/api/clients/', []), ('/api/clients/', {'results': 'bad'}),
+    ('/api/clients/', {'results': [{}]}),
+    ('/api/clients/', {'results': [{'id': 1, 'name': []}]}),
+    ('/api/clients/1/stock/', {'results': [None]}),
+    ('/api/clients/1/summary/', {'attention': [None]}),
+    ('/api/clients/1/summary/', {'attention': [{'message': None}]}),
+])
+def test_invalid_server_or_cached_payload_cannot_reach_qt(context, path, payload):
+    cache, api, _user, _workers, service, _sync = context
+    cache.put(service.namespace, path, payload)
+    assert service.cached(path) is None
+    api.request = Mock(return_value=payload)
+    with pytest.raises(ApiError, match='формат'):
+        service.fetch(path)
