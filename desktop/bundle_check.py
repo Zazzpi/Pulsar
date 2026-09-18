@@ -53,5 +53,7 @@ def check_bundle(report_path: str) -> int:
         }, indent=2), encoding="utf-8")
         return 0
     except Exception as error:
-        report.write_text(json.dumps({"ok": False, "error": type(error).__name__}), encoding="utf-8")
+        # This isolated check handles only synthetic demo data, never login secrets.
+        report.write_text(json.dumps({"ok": False, "error": type(error).__name__,
+                                      "detail": str(error)}), encoding="utf-8")
         return 1
