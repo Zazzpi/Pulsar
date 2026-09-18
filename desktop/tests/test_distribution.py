@@ -51,6 +51,17 @@ def test_demo_search_pagination_and_dates(tmp_path):
     assert not demo.request("GET", "/api/clients/1/orders/", params={"from": "2000-01-01", "to": "2000-02-01"})["results"]
 
 
+def test_demo_releases_database_handles_on_windows(tmp_path):
+    path = tmp_path / "demo.sqlite3"
+    demo = DemoApiClient(path)
+    demo.request("POST", "/api/watches/", data={"wms_client_id": 1})
+    demo.request("GET", "/api/watches/")
+    # Windows refuses this if sqlite connections still hold the file open.
+    renamed = path.with_suffix(".moved")
+    path.rename(renamed)
+    renamed.unlink()
+
+
 def test_demo_button_opens_populated_gui_without_server(qapp, tmp_path, monkeypatch):
     monkeypatch.setattr(requests, "request", lambda *a, **kw: pytest.fail("Demo attempted HTTP"))
     settings = Settings("", tmp_path / "cache.db")

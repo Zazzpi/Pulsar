@@ -1,4 +1,5 @@
 """Local API-shaped demonstration. No network, server, or WMS credentials."""
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -20,7 +21,7 @@ class DemoApiClient:
             {"id": i, "name": name, "inn": f"770000000{i}", "is_active": True}
             for i, name in enumerate(("Ромашка", "Альфа Логистика", "Вектор"), 1)
         ]
-        with sqlite3.connect(self.state_path) as db:
+        with closing(sqlite3.connect(self.state_path)) as db, db:
             db.execute("CREATE TABLE IF NOT EXISTS demo_state (key TEXT PRIMARY KEY, payload TEXT NOT NULL)")
             db.execute("INSERT OR IGNORE INTO demo_state VALUES ('watches', '{}')")
             db.execute("INSERT OR IGNORE INTO demo_state VALUES ('notes', '{}')")
@@ -35,7 +36,7 @@ class DemoApiClient:
                 "has_next": start + size < len(rows)}
 
     def _state(self, key, update=None):
-        with sqlite3.connect(self.state_path, timeout=5) as db:
+        with closing(sqlite3.connect(self.state_path, timeout=5)) as db, db:
             db.execute("BEGIN IMMEDIATE")
             state = json.loads(db.execute("SELECT payload FROM demo_state WHERE key=?", [key]).fetchone()[0])
             result = update(state) if update else state
