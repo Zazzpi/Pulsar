@@ -1,6 +1,6 @@
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.test import Client
 
 from accounts.models import ApiToken
@@ -11,8 +11,10 @@ def isolated_cache(settings):
     settings.WMS_MODE = "mock"
     settings.PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
     cache.clear()
+    caches["login_limits"].clear()
     yield
     cache.clear()
+    caches["login_limits"].clear()
 
 
 @pytest.fixture

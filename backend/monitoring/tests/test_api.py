@@ -68,6 +68,15 @@ def test_login_validation_and_rate_limit(user, settings):
     assert response["Retry-After"] == "300"
 
 
+def test_wms_cache_eviction_cannot_reset_login_rate_limit(user, settings):
+    settings.LOGIN_RATE_LIMIT = 1
+    body = {"username": user.username, "password": "incorrect"}
+    client = Client()
+    assert client.post("/api/auth/login/", body, content_type="application/json").status_code == 401
+    cache.clear()
+    assert client.post("/api/auth/login/", body, content_type="application/json").status_code == 429
+
+
 def test_watch_exact_duration_idempotence_and_isolation(api, other_api, user):
     response = api.post("/api/watches/", {"wms_client_id": 1}, content_type="application/json")
     assert response.status_code == 201

@@ -93,6 +93,12 @@ CACHES = {"default": {
     "LOCATION": "pulsar-api",
     "OPTIONS": {"MAX_ENTRIES": 3000},
 }}
+# WMS result churn must not evict counters protecting password authentication.
+CACHES["login_limits"] = {
+    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    "LOCATION": "pulsar-login-limits",
+    "OPTIONS": {"MAX_ENTRIES": 10000},
+}
 CACHE_TTLS = {
     "clients": int(os.getenv("CLIENTS_CACHE_TTL", "60")),
     "client": int(os.getenv("CLIENTS_CACHE_TTL", "60")),

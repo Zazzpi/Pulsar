@@ -3,7 +3,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth import authenticate
-from django.core.cache import cache
+from django.core.cache import caches
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -26,6 +26,7 @@ def login(request):
 
     identity = request.META.get("REMOTE_ADDR", "unknown")
     key = "login:" + hashlib.sha256(identity.encode()).hexdigest()
+    cache = caches["login_limits"]
     cache.add(key, 0, timeout=settings.LOGIN_RATE_WINDOW)
     try:
         attempts = cache.incr(key)
