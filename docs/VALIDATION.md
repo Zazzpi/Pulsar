@@ -96,3 +96,13 @@
 картой. SQL находится в `backend/wms/queries.py`, допущения — в
 `backend/wms/README.md`. Реальная схема заказчика, TLS-инфраструктура и
 нагрузка остаются непроверенными: адрес и доступ не предоставлены.
+
+Сборки desktop из `f5624fa01164cb7b568750555e479b2c23de05a8`:
+[Windows](https://github.com/Zazzpi/Pulsar/actions/runs/35396367819),
+[Linux](https://github.com/Zazzpi/Pulsar/actions/runs/35396367810).
+Обе прошли тесты desktop и запуск готового файла с расширенным smoke-сценарием.
+Последующие изменения касаются защиты backend и документации.
+`manage.py check --deploy` с production-настройками проходит без предупреждений:
+добавлены стандартные CSRF middleware и запрет встраивания страниц во фрейм.
+API с Bearer-токеном сохраняет явное исключение из cookie-based CSRF-проверки;
+авторизация по cookie в проекте не применяется.

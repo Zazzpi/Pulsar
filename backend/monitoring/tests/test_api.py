@@ -25,6 +25,7 @@ def test_login_digest_logout(user):
         "username": user.username, "password": "A-test-passphrase-218",
     }, content_type="application/json")
     assert response.status_code == 200
+    assert response["X-Frame-Options"] == "DENY"
     payload = response.json()
     assert payload["user"] == {"id": user.pk, "username": user.username}
     token = ApiToken.objects.get()
