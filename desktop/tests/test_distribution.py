@@ -73,7 +73,7 @@ def test_demo_button_opens_populated_gui_without_server(qapp, tmp_path, monkeypa
     window = controller.window
     try:
         for _ in range(100):
-            if window.details.panels[0].loaded:
+            if window.details.panels[0].loaded and not window.details.watch_busy:
                 break
             QTest.qWait(20)
         assert window.clients.count() == 3
