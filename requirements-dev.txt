@@ -1,0 +1,4 @@
+-r backend/requirements.txt
+-r desktop/requirements.txt
+pytest>=8,<10
+pytest-django>=4.9,<5
